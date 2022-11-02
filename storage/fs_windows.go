@@ -28,9 +28,12 @@ func SetFileTime(filename string, creationTime time.Time, modTime time.Time) err
 		return err
 	}
 
-	cft := syscall.NsecToFiletime(int64(creationTime.Nanosecond()))
-	mft := syscall.NsecToFiletime(int64(modTime.Nanosecond()))
+	cft := syscall.NsecToFiletime(creationTime.UnixNano())
+	mft := syscall.NsecToFiletime(modTime.UnixNano())
 	err = syscall.SetFileTime(fd, &cft, &mft, &mft)
+
+	defer syscall.Close(fd)
+
 	if err != nil {
 		return err
 	}
