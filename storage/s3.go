@@ -129,12 +129,48 @@ func (s *S3) Stat(ctx context.Context, url *url.URL) (*Object, error) {
 
 	etag := aws.StringValue(output.ETag)
 	mod := aws.TimeValue(output.LastModified)
+	userId := aws.StringValue(output.Metadata[METADATA_OWNER])
+	groupId := aws.StringValue(output.Metadata[METADATA_GROUP])
 
 	obj := &Object{
-		URL:     url,
-		Etag:    strings.Trim(etag, `"`),
-		ModTime: &mod,
-		Size:    aws.Int64Value(output.ContentLength),
+		URL:        url,
+		Etag:       strings.Trim(etag, `"`),
+		UserId:     userId,
+		GroupId:    groupId,
+		ModTime:    &mod,
+		Size:       aws.Int64Value(output.ContentLength),
+		CreateTime: &time.Time{},
+		AccessTime: &time.Time{},
+	}
+
+	cTimeS := aws.StringValue(output.Metadata[METADATA_CTIME])
+	if cTimeS != "" {
+		ctime, err := strconv.ParseInt(cTimeS, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		creationTime := time.Unix(0, ctime)
+		obj.CreateTime = &creationTime
+	}
+
+	mTimeS := aws.StringValue(output.Metadata[METADATA_MTIME])
+	if mTimeS != "" {
+		mtime, err := strconv.ParseInt(mTimeS, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		modificationTime := time.Unix(0, mtime)
+		obj.ModTime = &modificationTime
+	}
+
+	aTimeS := aws.StringValue(output.Metadata[METADATA_ATIME])
+	if aTimeS != "" {
+		atime, err := strconv.ParseInt(aTimeS, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		accessTime := time.Unix(0, atime)
+		obj.AccessTime = &accessTime
 	}
 
 	if s.noSuchUploadRetryCount > 0 {
@@ -388,7 +424,23 @@ func (s *S3) Copy(ctx context.Context, from, to *url.URL, metadata Metadata) err
 		}
 		input.Expires = aws.Time(t)
 	}
+	input.Metadata[METADATA_OWNER] = aws.String(metadata.userId())
+	input.Metadata[METADATA_GROUP] = aws.String(metadata.groupId())
 
+	ctime := metadata.cTime()
+	if ctime != "" {
+		input.Metadata[METADATA_CTIME] = aws.String(ctime)
+	}
+
+	mtime := metadata.mTime()
+	if ctime != "" {
+		input.Metadata[METADATA_MTIME] = aws.String(mtime)
+	}
+
+	atime := metadata.aTime()
+	if ctime != "" {
+		input.Metadata[METADATA_ATIME] = aws.String(atime)
+	}
 	_, err := s.api.CopyObject(input)
 	return err
 }
@@ -552,6 +604,21 @@ func (s *S3) Put(
 			return err
 		}
 		input.Expires = aws.Time(t)
+	}
+
+	ctime := metadata.cTime()
+	if ctime != "" {
+		input.Metadata[METADATA_CTIME] = aws.String(ctime)
+	}
+
+	mtime := metadata.mTime()
+	if ctime != "" {
+		input.Metadata[METADATA_MTIME] = aws.String(mtime)
+	}
+
+	atime := metadata.aTime()
+	if ctime != "" {
+		input.Metadata[METADATA_ATIME] = aws.String(atime)
 	}
 
 	sseEncryption := metadata.SSE()
