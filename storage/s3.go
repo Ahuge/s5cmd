@@ -135,6 +135,8 @@ func (s *S3) Stat(ctx context.Context, url *url.URL) (*Object, error) {
 
 	etag := aws.StringValue(output.ETag)
 	mod := aws.TimeValue(output.LastModified)
+	userID := aws.StringValue(output.Metadata["file-owner"])
+	groupID := aws.StringValue(output.Metadata["file-group"])
 
 	obj := &Object{
 		URL:        url,
@@ -143,6 +145,8 @@ func (s *S3) Stat(ctx context.Context, url *url.URL) (*Object, error) {
 		Size:       aws.Int64Value(output.ContentLength),
 		CreateTime: &time.Time{},
 		AccessTime: &time.Time{},
+		UserID:     userID,
+		GroupID:    groupID,
 	}
 
 	cTimeS := aws.StringValue(output.Metadata["file-ctime"])
@@ -597,6 +601,9 @@ func (s *S3) Copy(ctx context.Context, from, to *url.URL, metadata Metadata) err
 	if ctime != "" {
 		input.Metadata["file-atime"] = aws.String(atime)
 	}
+
+	input.Metadata["file-owner"] = aws.String(metadata.FileUID)
+	input.Metadata["file-group"] = aws.String(metadata.FileGID)
 
 	if len(metadata.UserDefined) != 0 {
 		m := make(map[string]*string)
