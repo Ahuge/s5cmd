@@ -949,14 +949,14 @@ func (s *S3) CreateDir(
 		input.Metadata["file-atime"] = aws.String(atime)
 	}
 
-	userId := metadata.FileUID
-	if userId != "" {
-		input.Metadata["file-owner"] = aws.String(userId)
+	userID := metadata.FileUID
+	if userID != "" {
+		input.Metadata["file-owner"] = aws.String(userID)
 	}
 
-	groupId := metadata.FileGID
-	if groupId != "" {
-		input.Metadata["file-group"] = aws.String(groupId)
+	groupID := metadata.FileGID
+	if groupID != "" {
+		input.Metadata["file-group"] = aws.String(groupID)
 	}
 
 	if len(metadata.UserDefined) != 0 {
